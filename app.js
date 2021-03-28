@@ -25,7 +25,7 @@ var TOKEN = 0;
 var URL = 'https://api.spotify.com/v1/me';
 var tracksToPlaylists = new Map();
 var playlist_id = 0;
-var totalTracks = 0;
+var issues = 0;
 
 /**
  * Generates a random string containing numbers and letters
@@ -129,8 +129,8 @@ app.get('/shabbadoo', function(req, res) {
 });
 
 async function getPlaylist() {
-  var testVarK = 49;
-  var totalPlaylists = testVarK;
+  // var testVarK = 49;
+  var totalPlaylists = 0;
   let limit = 0;
 
   var playlistOptions = {
@@ -140,15 +140,15 @@ async function getPlaylist() {
   };
 
   request.get(playlistOptions, async function(error, response, body) {
-    // totalPlaylists = body.total;
-    limit = 1;
+    totalPlaylists = body.total;
+    limit = 50;
     let batches = Math.floor(totalPlaylists/limit);
     if (totalPlaylists%limit != 0) {
       batches += 1;
     } 
 
-    for (const batchNum of Array(batches).keys()) {
-      playlistOptions.url = "https://api.spotify.com/v1/me/playlists" + "?offset=" + limit*batchNum + "&limit=" + limit;
+    for (const batch of Array(batches).keys()) {
+      playlistOptions.url = "https://api.spotify.com/v1/me/playlists" + "?offset=" + limit*batch + "&limit=" + limit;
       await getBatch(playlistOptions);
     }
   })
@@ -156,8 +156,8 @@ async function getPlaylist() {
   // limit = 50;
   // let batches = Math.floor(totalPlaylists/limit) + 1;
 
-  // for (const batchNum of Array(batches).keys()) {
-  //   playlistOptions.url = "https://api.spotify.com/v1/me/playlists" + "?offset=" + limit*batchNum + "&limit=" + limit;
+  // for (const batch of Array(batches).keys()) {
+  //   playlistOptions.url = "https://api.spotify.com/v1/me/playlists" + "?offset=" + limit*batch + "&limit=" + limit;
   //   await getBatch(playlistOptions);
   // }
   
@@ -193,25 +193,33 @@ async function getBatch(playlistOptions) {
 async function getTracks(playlistName, playlistID, numTracks, access_token) {
 
   let limit = 100;
-  let numCalls = Math.floor(numTracks/limit) + 1;
+  let trackBatches = Math.floor(numTracks/limit) + 1;
+  if (numTracks % limit == 0) {
+    trackBatches -= 1;
+  }
   var base_url = 'https://api.spotify.com/v1/playlists/' + playlistID + '/tracks';
   var options = {
     url: base_url,
     headers: { 'Authorization': 'Bearer ' + access_token},
     json: true
   };
-  for (const callNum of Array(numCalls).keys()) {
-    options.url = base_url + "?offset=" + 100*callNum + "&limit=" + limit;
+  for (const trackBatch of Array(trackBatches).keys()) {
+    options.url = base_url + "?offset=" + 100*trackBatch + "&limit=" + limit;
     //TODO:make this request.get happen asynchronously
     request.get(options, async function(error, response, body) {
-      await body.items.forEach((someTrack)=> {
-        let track = someTrack.track.name;
-        if (tracksToPlaylists.has(track)) {
-          tracksToPlaylists.get(track).push(playlistName);
-        } else {
-          tracksToPlaylists.set(track, [playlistName]);
-        }
-      });
+      try {
+        await body.items.forEach((someTrack)=> {
+          let track = someTrack.track.name;
+          if (tracksToPlaylists.has(track)) {
+            tracksToPlaylists.get(track).push(playlistName);
+          } else {
+            tracksToPlaylists.set(track, [playlistName]);
+          }
+        });
+      } catch (err) {
+        issues += 1;
+        console.log(playlistName + " --- issue " + issues);
+      }
     });
   }
 }
