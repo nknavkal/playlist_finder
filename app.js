@@ -130,14 +130,23 @@ app.get('/shabbadoo', function(req, res) {
 
 async function getPlaylist() {
   var playlists = [];
+  var totalPlaylists = 0;
+  let limit = 0;
 
-  var optionsGet = {
-    url: 'https://api.spotify.com/v1/me/playlists?limit=1',
+  var playlistOptions = {
+    url: 'https://api.spotify.com/v1/me/playlists?limit=' + limit,
     headers: { 'Authorization': 'Bearer ' + TOKEN},
     json: true
   };
 
-  request.get(optionsGet, async function(error, response, body) {
+  await request.get(playlistOptions, function(error, response, body) {
+    totalPlaylists = body.total;
+  })
+  
+  limit = 50;
+  let numCalls = 
+
+  await request.get(playlistOptions, async function(error, response, body) {
     for(let i = 0; i<body.items.length; i++) {
       var playlist = body.items[i];
       var playlist_name = playlist.name;
@@ -153,7 +162,6 @@ async function getPlaylist() {
 }
 
 async function getTracks(playlistName, playlistID, numTracks, access_token) {
-  console.log("started getTracks")
   var tracks = [];
   let limit = 100;
   let numCalls = Math.floor(numTracks/limit) + 1;
@@ -175,20 +183,21 @@ async function getTracks(playlistName, playlistID, numTracks, access_token) {
           tracksToPlaylists.set(track, [playlistName]);
         }
       });
-      console.log(tracksToPlaylists); 
     });
   }
 }
 
-
+function testFunc() {
+  console.log(tracksToPlaylists.get('Andrew'));
+}
 
 
 app.get('/get_playlist', function(req, res) {
   getPlaylist();
 });
 
-app.get('/get_tracks', function(req,res) {
-    getTracks(playlist_id, totalTracks, TOKEN);
+app.get('/test', function(req,res) {
+    testFunc();
   });
 
 
